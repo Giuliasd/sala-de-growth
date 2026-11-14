@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "OKRUpdate" ADD COLUMN     "monthValue1" DOUBLE PRECISION,
+ADD COLUMN     "monthValue2" DOUBLE PRECISION,
+ADD COLUMN     "monthValue3" DOUBLE PRECISION;

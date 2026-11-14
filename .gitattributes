@@ -1,0 +1,2 @@
+# Scripts shell precisam de LF (rodam em Linux no Heroku; CRLF quebra o bash).
+*.sh text eol=lf

@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "OKRUnit" AS ENUM ('UNIDADE', 'REAL', 'PORCENTAGEM');
+
+-- AlterTable
+ALTER TABLE "OKR" ADD COLUMN     "unit" "OKRUnit" NOT NULL DEFAULT 'UNIDADE';

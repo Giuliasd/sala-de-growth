@@ -1,0 +1,824 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Quarter {
+  id           String        @id @default(uuid())
+  year         Int
+  quarter      Int
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  experimentos Experimento[]
+  iniciativas  Iniciativa[]
+  okrs         OKR[]
+  objetivos    Objetivo[]
+}
+
+model Frente {
+  id           String        @id @default(uuid())
+  name         String
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  acoes        Acao[]
+  experimentos Experimento[]
+  iniciativas  Iniciativa[]
+  okrs         OKR[]
+}
+
+model TeamMember {
+  id                  String               @id @default(uuid())
+  name                String
+  // Nullable: ao desativar um membro, o e-mail é apagado (privacidade + libera o
+  // endereço para reconvite). O registro é mantido só com o nome para que
+  // iniciativas/experimentos/OKRs/comentários preservem a autoria.
+  email               String?              @unique
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  role                MemberRole           @default(VISITANTE)
+  ausencias           Ausencia[]
+  // Responsabilidade é N:N em iniciativa/experimento/checkpoint: um item pode
+  // ter vários responsáveis, todos com o mesmo peso (não há "principal").
+  experimentos        Experimento[]        @relation("ExperimentoToTeamMember")
+  iniciativas         Iniciativa[]         @relation("IniciativaToTeamMember")
+  initiativeComments  InitiativeComment[]
+  experimentoComments ExperimentoComment[]
+  initiativeCheckpoints  InitiativeCheckpoint[]  @relation("InitiativeCheckpointToTeamMember")
+  experimentoCheckpoints ExperimentoCheckpoint[] @relation("ExperimentoCheckpointToTeamMember")
+  okrUpdates          OKRUpdate[]
+  okrs                OKR[]                @relation("OKRToTeamMember")
+  acoes               Acao[]
+  invitesSent         Invite[]             @relation("InvitesSent")
+  weeklyAvisos        WeeklyAviso[]
+  weeklyFocos         WeeklyFocus[]
+  registrosExcluidos  RegistroSemanal[]    @relation("RegistroExcluidoPor")
+  historicos          HistoricoItem[]
+  notificacoes        Notificacao[]        @relation("NotificacaoDestinatario")
+  notificacoesEnviadas Notificacao[]       @relation("NotificacaoAutor")
+  /// Tipos de aviso que a pessoa desligou (Perfil). Aviso desligado nem chega a
+  /// ser criado. Vazio = recebe todos.
+  notificacoesSilenciadas TipoNotificacao[] @default([])
+  mcpAuditLogs        McpAuditLog[]
+}
+
+model Invite {
+  id          String     @id @default(uuid())
+  email       String     @unique
+  role        MemberRole @default(VISITANTE)
+  token       String     @unique
+  createdById String
+  createdBy   TeamMember @relation("InvitesSent", fields: [createdById], references: [id])
+  createdAt   DateTime   @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+
+  @@index([createdById])
+}
+
+// Registro de toda chamada feita pelo MCP (Claude conectado à Sala).
+// É a única trilha para reverter uma edição errada de um agente — o banco só
+// tem backup diário. NUNCA grave o token de acesso aqui, só o id do membro.
+model McpAuditLog {
+  id        String     @id @default(uuid())
+  memberId  String
+  member    TeamMember @relation(fields: [memberId], references: [id])
+  tool      String
+  // Argumentos da chamada (truncados). Nas escritas guarda também antes/depois.
+  args      Json?
+  ok        Boolean
+  error     String?
+  createdAt DateTime   @default(now())
+
+  @@index([memberId, createdAt])
+  @@index([createdAt])
+}
+
+// Objetivo (pai) do quarter. Agrupa vários KRs (o modelo OKR abaixo), que podem
+// ser de frentes diferentes. O progresso do Objetivo é a média dos seus KRs
+// (calculado na aplicação, não persistido).
+model Objetivo {
+  id          String   @id @default(uuid())
+  quarterId   String
+  title       String
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  quarter     Quarter  @relation(fields: [quarterId], references: [id])
+  krs         OKR[]
+
+  @@index([quarterId])
+}
+
+// OKR = Key Result (KR). Mantém o nome do modelo por compatibilidade (okrId em
+// iniciativas/experimentos, histórico, relações). O campo `objective` é o rótulo
+// do KR; o objetivo-pai vive em Objetivo.title.
+model OKR {
+  id              String        @id @default(uuid())
+  quarterId       String
+  frenteId        String
+  objetivoId      String?
+  objective       String
+  targetValue     Float
+  initialValue    Float         @default(0)
+  currentValue    Float         @default(0)
+  progressPercent Float         @default(0)
+  lastUpdatedAt   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  unit            OKRUnit       @default(UNIDADE)
+  measurementType OKRMeasurementType @default(ACUMULADO)
+  monthValue1     Float?
+  monthValue2     Float?
+  monthValue3     Float?
+  experimentos    Experimento[]
+  iniciativas     Iniciativa[]
+  frente          Frente        @relation(fields: [frenteId], references: [id])
+  quarter         Quarter       @relation(fields: [quarterId], references: [id])
+  objetivo        Objetivo?     @relation(fields: [objetivoId], references: [id])
+  okrUpdates      OKRUpdate[]
+  members         TeamMember[]  @relation("OKRToTeamMember")
+
+  @@index([quarterId])
+  @@index([frenteId])
+  @@index([objetivoId])
+}
+
+model OKRUpdate {
+  id            String     @id @default(uuid())
+  okrId         String
+  memberId      String
+  previousValue Float
+  newValue      Float
+  /// Snapshot dos meses no momento da atualizacao (so em KR de media mensal).
+  monthValue1   Float?
+  monthValue2   Float?
+  monthValue3   Float?
+  /// Observação opcional de quem atualizou (por que o valor mudou).
+  note          String?
+  date          DateTime
+  createdAt     DateTime   @default(now())
+  member        TeamMember @relation(fields: [memberId], references: [id])
+  okr           OKR        @relation(fields: [okrId], references: [id])
+
+  @@index([okrId])
+  @@index([memberId])
+  // Leitura sempre "do KR, do mais recente" (histórico, sparkline, última
+  // atualização): cresce toda semana por KR.
+  @@index([okrId, date])
+}
+
+model Iniciativa {
+  id          String                 @id @default(uuid())
+  quarterId   String
+  frenteId    String
+  okrId       String?
+  name        String
+  status      IniciativaStatus
+  startDate   DateTime?
+  endDate     DateTime?
+  docLink     String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  deletedAt   DateTime?
+  priority    Priority               @default(MEDIA)
+  launchDate  DateTime?
+  /// Dia em que o time para para analisar os resultados do que foi entregue.
+  /// Mesma natureza do launchDate: um marco pontual, sinalizado no dashboard
+  /// e na Weekly de Rituais.
+  analysisDate DateTime?
+  resultado   ResultadoFinal?
+  // Marcado no detalhe quando a iniciativa precisa ter os resultados
+  // apresentados — nesse estado ela aparece na Review semanal (Rituais).
+  precisaApresentarResultados Boolean @default(false)
+  frente      Frente                 @relation(fields: [frenteId], references: [id])
+  members     TeamMember[]           @relation("IniciativaToTeamMember")
+  okr         OKR?                   @relation(fields: [okrId], references: [id])
+  quarter     Quarter                @relation(fields: [quarterId], references: [id])
+  checkpoints InitiativeCheckpoint[]
+  /// Tags disponíveis para os checkpoints DESTA iniciativa (cada item tem as suas).
+  checkpointTags CheckpointTag[]
+  comments    InitiativeComment[]
+  acoes       Acao[]
+  weeklyFocos WeeklyFocus[]
+  registrosSemanais RegistroSemanal[]
+
+  // O par (quarterId, deletedAt) é o filtro de praticamente toda listagem.
+  // Os demais cobrem as colunas de FK (o Postgres NÃO indexa FK sozinho) e os
+  // filtros de status/prazo usados no dashboard e nos rituais. O filtro por
+  // responsável passa pela tabela de junção, que tem índice próprio.
+  @@index([quarterId, deletedAt])
+  @@index([frenteId])
+  @@index([okrId])
+  @@index([status])
+  @@index([endDate])
+}
+
+model InitiativeComment {
+  id           String     @id @default(uuid())
+  initiativeId String
+  memberId     String
+  content      String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  initiative   Iniciativa @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  member       TeamMember @relation(fields: [memberId], references: [id])
+
+  @@index([initiativeId])
+  @@index([memberId])
+}
+
+model InitiativeCheckpoint {
+  id           String      @id @default(uuid())
+  initiativeId String
+  name         String
+  description  String?
+  startDate    DateTime?
+  dueDate      DateTime
+  isCompleted  Boolean     @default(false)
+  categoria    CheckpointCategoria?
+  completedAt  DateTime?
+  order        Int         @default(0)
+  parentId     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  initiative   Iniciativa  @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  members      TeamMember[] @relation("InitiativeCheckpointToTeamMember")
+  tags         CheckpointTag[] @relation("CheckpointTagToInitiativeCheckpoint")
+  parent       InitiativeCheckpoint?  @relation("ICChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children     InitiativeCheckpoint[] @relation("ICChildren")
+  /// Marco → checkpoints necessários para ele acontecer. Só faz sentido em
+  /// checkpoint de categoria MARCO, e só aponta para checkpoints do nível
+  /// principal da mesma iniciativa (regras em lib/checkpoint-marco.ts,
+  /// garantidas pelas actions). `marcos` é o lado inverso: os marcos que
+  /// dependem deste checkpoint.
+  requisitos   InitiativeCheckpoint[] @relation("ICMarcoRequisitos")
+  marcos       InitiativeCheckpoint[] @relation("ICMarcoRequisitos")
+  registrosSemanais RegistroSemanal[]
+
+  // initiativeId e parentId são os mais críticos da base: o detalhe da
+  // iniciativa desce 3 níveis de subcheckpoint, e cada nível é uma query
+  // separada do Prisma (WHERE parentId IN (...)) — sem índice, um scan da
+  // tabela inteira por nível. dueDate/startDate cobrem a busca por semana
+  // do dashboard e dos rituais.
+  @@index([initiativeId])
+  @@index([parentId])
+  @@index([dueDate])
+  @@index([startDate])
+}
+
+model Experimento {
+  id              String                  @id @default(uuid())
+  quarterId       String
+  frenteId        String
+  okrId           String?
+  name            String
+  description     String
+  objective       String
+  status          ExperimentoStatus
+  impactScore     Float                   @default(0)
+  confidenceScore Float                   @default(0)
+  effortScore     Float                   @default(0)
+  iceScore        Float                   @default(0)
+  iceAction       IceAction               @default(BACKLOG)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  deletedAt       DateTime?
+  docLink         String?
+  endDate         DateTime?
+  startDate       DateTime?
+  launchDate      DateTime?
+  /// Ver Iniciativa.analysisDate.
+  analysisDate    DateTime?
+  resultado       ResultadoFinal?
+  frente          Frente                  @relation(fields: [frenteId], references: [id])
+  members         TeamMember[]            @relation("ExperimentoToTeamMember")
+  okr             OKR?                    @relation(fields: [okrId], references: [id])
+  quarter         Quarter                 @relation(fields: [quarterId], references: [id])
+  checkpoints     ExperimentoCheckpoint[]
+  /// Ver Iniciativa.checkpointTags.
+  checkpointTags  CheckpointTag[]
+  comments        ExperimentoComment[]
+  acoes           Acao[]
+  weeklyFocos     WeeklyFocus[]
+  registrosSemanais RegistroSemanal[]
+
+  // Espelha os índices de Iniciativa. iceScore entra porque a listagem de
+  // experimentos e o card do dashboard ordenam por ele.
+  @@index([quarterId, deletedAt])
+  @@index([frenteId])
+  @@index([okrId])
+  @@index([status])
+  @@index([iceScore])
+}
+
+model ExperimentoComment {
+  id            String      @id @default(uuid())
+  experimentoId String
+  memberId      String
+  content       String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  experimento   Experimento @relation(fields: [experimentoId], references: [id], onDelete: Cascade)
+  member        TeamMember  @relation(fields: [memberId], references: [id])
+
+  @@index([experimentoId])
+  @@index([memberId])
+}
+
+model ExperimentoCheckpoint {
+  id            String      @id @default(uuid())
+  experimentoId String
+  name          String
+  description   String?
+  startDate     DateTime?
+  dueDate       DateTime
+  isCompleted   Boolean     @default(false)
+  categoria     CheckpointCategoria?
+  completedAt   DateTime?
+  order         Int         @default(0)
+  parentId      String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  experimento   Experimento @relation(fields: [experimentoId], references: [id], onDelete: Cascade)
+  members       TeamMember[] @relation("ExperimentoCheckpointToTeamMember")
+  tags          CheckpointTag[] @relation("CheckpointTagToExperimentoCheckpoint")
+  parent        ExperimentoCheckpoint?  @relation("ECChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children      ExperimentoCheckpoint[] @relation("ECChildren")
+  /// Marco → checkpoints necessários. Ver InitiativeCheckpoint.requisitos.
+  requisitos    ExperimentoCheckpoint[] @relation("ECMarcoRequisitos")
+  marcos        ExperimentoCheckpoint[] @relation("ECMarcoRequisitos")
+  registrosSemanais RegistroSemanal[]
+
+  @@index([experimentoId])
+  @@index([parentId])
+  @@index([dueDate])
+  @@index([startDate])
+}
+
+/// Tag de checkpoint. Cada iniciativa/experimento configura as PRÓPRIAS tags —
+/// não existe catálogo global. Exatamente um dos dois donos é preenchido
+/// (CHECK na migration). Excluir a tag solta ela dos checkpoints (a junção cai
+/// por cascata); excluir o dono leva as tags junto.
+model CheckpointTag {
+  id            String       @id @default(uuid())
+  name          String
+  /// Família de cor do design system (sky, sage, peach, butter, blush, neutral).
+  color         String       @default("sky")
+  /// Posição na lista do item — define a ordem dos grupos na visão segmentada.
+  order         Int          @default(0)
+  iniciativaId  String?
+  experimentoId String?
+  createdAt     DateTime     @default(now())
+  iniciativa    Iniciativa?  @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
+  experimento   Experimento? @relation(fields: [experimentoId], references: [id], onDelete: Cascade)
+  initiativeCheckpoints  InitiativeCheckpoint[]  @relation("CheckpointTagToInitiativeCheckpoint")
+  experimentoCheckpoints ExperimentoCheckpoint[] @relation("CheckpointTagToExperimentoCheckpoint")
+
+  @@unique([iniciativaId, name])
+  @@unique([experimentoId, name])
+}
+
+/// Trava de férias: janela em que ninguém do time pode tirar férias (ex.: Black
+/// Friday). Não pertence a membro nenhum — vale para o time inteiro, e por isso
+/// não tem relação com TeamMember.
+model TravaFerias {
+  id        String   @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Leitura é sempre por janela (trava que cruza o período visível).
+  @@index([startDate, endDate])
+}
+
+model Ausencia {
+  id        String       @id @default(uuid())
+  memberId  String
+  type      AusenciaType
+  startDate DateTime
+  endDate   DateTime
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  member    TeamMember   @relation(fields: [memberId], references: [id])
+
+  // Toda leitura de ausência é uma janela de datas (startDate <= fim AND
+  // endDate >= início), no dashboard, no roadmap e na página de ausências.
+  @@index([startDate, endDate])
+  @@index([memberId])
+}
+
+/// "Fique ligado": o recado que vale para o time inteiro numa semana.
+///
+/// Um por semana (weekStart é a chave), não uma thread: aviso precisa estar no
+/// topo e visível, e numa lista cronológica o importante afunda na terceira
+/// mensagem. Foi o que aconteceu com o card de comentários que isto substitui.
+///
+/// Conteúdo vazio não é ausência de linha: significa "esta semana está
+/// silenciada". É o que distingue apagar o aviso de nunca ter escrito — sem a
+/// linha vazia, o aviso da semana anterior voltaria a aparecer herdado.
+model WeeklyAviso {
+  weekStart   DateTime    @id
+  content     String
+  updatedAt   DateTime    @updatedAt
+  updatedById String?
+  updatedBy   TeamMember? @relation(fields: [updatedById], references: [id])
+
+  @@index([updatedById])
+}
+
+/// Foco da semana: as prioridades que a pessoa escolhe para a semana do ritual
+/// ("máximo de duas", como o documento da weekly pede).
+///
+/// É por PESSOA e por SEMANA — diferente da prioridade do item, que vale para o
+/// item inteiro e não muda de semana em semana. O mesmo item pode ser foco da
+/// Camila e não ser do Rafael, ainda que os dois respondam por ele.
+///
+/// Ancorado em `weekStart` pelo mesmo motivo do WeeklyComment: é o recorte que
+/// o filtro da Weekly carrega na URL, então o foco de uma semana continua
+/// legível meses depois.
+model WeeklyFocus {
+  id            String       @id @default(uuid())
+  weekStart     DateTime
+  memberId      String
+  /// Exatamente um dos três é preenchido (garantido por CHECK na migration).
+  iniciativaId  String?
+  experimentoId String?
+  /// Ação também pode ser prioridade da semana: parte do trabalho que mais
+  /// importa numa semana não é iniciativa nem experimento.
+  acaoId        String?
+  createdAt     DateTime     @default(now())
+  member        TeamMember   @relation(fields: [memberId], references: [id])
+  iniciativa    Iniciativa?  @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
+  experimento   Experimento? @relation(fields: [experimentoId], references: [id], onDelete: Cascade)
+  acao          Acao?        @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+
+  // Um item não pode ser marcado duas vezes pela mesma pessoa na mesma semana.
+  @@unique([weekStart, memberId, iniciativaId])
+  @@unique([weekStart, memberId, experimentoId])
+  @@unique([weekStart, memberId, acaoId])
+  // A leitura é sempre "os focos desta semana".
+  @@index([weekStart])
+  @@index([memberId])
+}
+
+model PlaybookLink {
+  id        String           @id @default(uuid())
+  title     String
+  subtitle  String
+  url       String
+  iconName  String
+  order     Int              @default(0)
+  sectionId String?
+  section   PlaybookSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([sectionId])
+}
+
+model PlaybookSection {
+  id        String         @id @default(uuid())
+  name      String
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  links     PlaybookLink[]
+}
+
+model Acao {
+  id            String       @id @default(uuid())
+  title         String
+  dataInicio    DateTime
+  dataFim       DateTime
+  responsavelId String
+  /// Frente a que a ação pertence. Nulável: parte do trabalho miúdo é
+  /// transversal ("TH", "1:1", "acompanhamento") e não é de frente nenhuma —
+  /// essas ficam no balde "Também nesta semana" da Weekly.
+  frenteId      String?
+  iniciativaId  String?
+  experimentoId String?
+  repeticao     Json?
+  notes         String?
+  completed     Boolean      @default(false)
+  completedAt   DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  semanas       AcaoSemana[]
+  weeklyFocos   WeeklyFocus[]
+  responsavel   TeamMember   @relation(fields: [responsavelId], references: [id])
+  frente        Frente?      @relation(fields: [frenteId], references: [id], onDelete: SetNull)
+  iniciativa    Iniciativa?  @relation(fields: [iniciativaId], references: [id])
+  experimento   Experimento? @relation(fields: [experimentoId], references: [id])
+
+  @@index([responsavelId])
+  @@index([frenteId])
+  @@index([iniciativaId])
+  @@index([experimentoId])
+  @@index([deletedAt])
+  @@index([dataInicio, dataFim])
+}
+
+/// Conclusão de uma ação numa semana.
+///
+/// Existe porque `Acao.completed` é um booleano só: serve para ação de uma vez,
+/// e mente para ação recorrente — concluir o "1:1" desta semana marcaria o 1:1
+/// para sempre. Aqui a conclusão é por semana: a linha existe = concluída
+/// naquela semana; desmarcar apaga a linha.
+model AcaoSemana {
+  id        String   @id @default(uuid())
+  acaoId    String
+  weekStart DateTime
+  createdAt DateTime @default(now())
+  acao      Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+
+  @@unique([acaoId, weekStart])
+  @@index([weekStart])
+}
+
+
+/// Registro da semana: cada checkpoint que fez parte da Weekly de uma semana.
+///
+/// A Weekly é calculada sobre o estado ATUAL dos checkpoints, e por isso o que
+/// era remarcado, excluído ou mudava de item sumia da semana em que estava. O
+/// registro guarda que o checkpoint esteve ali, com uma cópia do que a tela
+/// mostra (nome, prazo, responsáveis, item, frente). A cópia acompanha o
+/// checkpoint enquanto a semana está aberta e CONGELA no fechamento (sexta,
+/// 14:59 em São Paulo no padrão, configurável em HorarioDoRitual — ver
+/// janelaDoRitual em lib/date-utils.ts): é a foto que
+/// o histórico mostra, e editar o checkpoint depois não muda o passado.
+///
+/// Excluir o checkpoint não apaga o registro: a ligação vira NULL e o
+/// registro fica com excluidoEm. Exatamente um dos dois checkpoints (e um dos
+/// dois itens) é preenchido.
+model RegistroSemanal {
+  id                      String                 @id @default(uuid())
+  /// Segunda-feira da semana (meia-noite UTC) — a mesma chave do WeeklyFocus.
+  weekStart               DateTime
+  initiativeCheckpointId  String?
+  experimentoCheckpointId String?
+  iniciativaId            String?
+  experimentoId           String?
+  /// Planejado (estava na Weekly até o fim da segunda) ou entrou depois.
+  origem                  OrigemNaSemana
+  registradoEm            DateTime               @default(now())
+  // Cópia do que a Weekly mostra — atualizada até o fechamento.
+  nome                    String
+  /// Ancestrais do checkpoint ("Pai › Filho"); null no nível principal.
+  caminho                 String?
+  categoria               CheckpointCategoria?
+  /// Prazo quando o checkpoint entrou na semana — base do "remarcado de X para Y".
+  prazoAoEntrar           DateTime
+  prazo                   DateTime
+  inicio                  DateTime?
+  concluidoEm             DateTime?
+  /// Responsáveis efetivos (o do checkpoint, senão o herdado do pai ou do item).
+  responsaveisIds         String[]
+  /// Tags do checkpoint ({ id, name, color }[]), para a foto da semana manter
+  /// a mesma ordem por tag da Weekly viva.
+  tags                    Json                   @default("[]")
+  itemNome                String
+  itemStatus              String
+  frenteId                String
+  frenteNome              String
+  /// Quantas vezes o prazo mudou com a semana aberta.
+  remarcacoes             Int                    @default(0)
+  excluidoEm              DateTime?
+  excluidoPorId           String?
+  /// Como a semana terminou para ele; null enquanto a semana está aberta.
+  desfecho                DesfechoNaSemana?
+  updatedAt               DateTime               @updatedAt
+  initiativeCheckpoint    InitiativeCheckpoint?  @relation(fields: [initiativeCheckpointId], references: [id], onDelete: SetNull)
+  experimentoCheckpoint   ExperimentoCheckpoint? @relation(fields: [experimentoCheckpointId], references: [id], onDelete: SetNull)
+  iniciativa              Iniciativa?            @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
+  experimento             Experimento?           @relation(fields: [experimentoId], references: [id], onDelete: Cascade)
+  excluidoPor             TeamMember?            @relation("RegistroExcluidoPor", fields: [excluidoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([weekStart, initiativeCheckpointId])
+  @@unique([weekStart, experimentoCheckpointId])
+  // O histórico (groupBy por checkpoint) e o ON DELETE SET NULL de toda exclusão de
+  // checkpoint filtram por estas colunas SEM weekStart — os únicos acima têm
+  // weekStart na frente e não servem.
+  @@index([initiativeCheckpointId])
+  @@index([experimentoCheckpointId])
+  // A leitura é sempre "o registro desta semana"; o fechamento procura as
+  // semanas vencidas ainda sem desfecho.
+  @@index([weekStart])
+  @@index([desfecho, weekStart])
+  @@index([iniciativaId])
+  @@index([experimentoId])
+}
+
+/// Horários do ritual: quando a semana fecha e até quando o que entra nela é
+/// "planejado". A abertura não é configurada: é o fechamento da semana
+/// anterior, para nenhum instante ficar sem semana ou em duas.
+///
+/// Uma linha por mudança, valendo da semana `vigenteDesde` em diante — a
+/// semana usa a linha mais recente que já valia nela. Assim mudar o horário
+/// não mexe em semana que já fechou. Sem nenhuma linha, vale o padrão do
+/// código (sexta 14:59 / segunda 23:59 — ver HORARIOS_PADRAO em
+/// lib/date-utils.ts). Configurado em /configuracoes/rituais.
+model HorarioDoRitual {
+  id                 String   @id @default(uuid())
+  /// Segunda-feira (meia-noite UTC) da primeira semana em que vale.
+  vigenteDesde       DateTime @unique
+  /// Dia em que a semana fecha: 1 = segunda … 7 = domingo.
+  fechamentoDia      Int
+  /// Último minuto da semana, em minutos desde 00:00 de São Paulo (14:59 = 899).
+  /// A semana seguinte abre no minuto seguinte.
+  fechamentoMinuto   Int
+  /// Dia do fim do planejamento: 1 = segunda … 7 = domingo.
+  planejamentoDia    Int
+  /// Último minuto do "planejado", em minutos desde 00:00 de São Paulo.
+  planejamentoMinuto Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+/// Histórico de mudanças de iniciativas e experimentos: uma linha por campo
+/// alterado (ou por evento: criação, exclusão, conversão, checkpoint).
+///
+/// Guarda o texto LEGÍVEL de antes e depois ("Em andamento", "Q3 2026", nomes),
+/// não ids — o histórico tem de continuar fazendo sentido depois que uma frente
+/// é renomeada ou um membro é desativado. As regras estão em lib/historico.ts.
+///
+/// Sem FK para o item: a entidade é iniciativa OU experimento (duas tabelas), e
+/// os dois são excluídos de forma lógica — o histórico de um item excluído
+/// continua lá. Quem fez some do nome se o membro for apagado (SetNull), mas
+/// membro nunca é apagado de verdade (ver TeamMember.isActive).
+model HistoricoItem {
+  id         String            @id @default(uuid())
+  entidade   HistoricoEntidade
+  entidadeId String
+  atorId     String?
+  /// Chave do campo (ver CampoDoHistorico em lib/historico.ts).
+  campo      String
+  de         String?
+  para       String?
+  /// Contexto extra, ex.: o nome do checkpoint.
+  detalhe    String?
+  createdAt  DateTime          @default(now())
+  ator       TeamMember?       @relation(fields: [atorId], references: [id], onDelete: SetNull)
+
+  // A leitura é sempre "o histórico deste item, do mais recente".
+  @@index([entidade, entidadeId, createdAt])
+  @@index([atorId])
+}
+
+enum HistoricoEntidade {
+  INICIATIVA
+  EXPERIMENTO
+}
+
+enum OrigemNaSemana {
+  PLANEJADO
+  ENTROU
+}
+
+enum DesfechoNaSemana {
+  CONCLUIDO
+  REMARCADO
+  ABERTO
+  EXCLUIDO
+  EM_ANDAMENTO
+}
+
+/// Categoria do checkpoint. Nula = checkpoint comum, que é a maioria.
+///
+/// Enum e não boolean para caber mais categoria depois sem trocar o tipo da
+/// coluna. Cada valor precisa de entrada em CATEGORIA_CONFIG (ícone e cor),
+/// senão ele cai no visual de checkpoint comum.
+enum CheckpointCategoria {
+  COMUNICACAO
+  MARCO
+}
+
+enum IniciativaStatus {
+  BACKLOG
+  EM_ANDAMENTO
+  CONCLUIDA
+  ESCREVENDO_RELATORIO
+  RELATORIO_FINALIZADO
+  PAUSADA
+  CANCELADA
+}
+
+enum ExperimentoStatus {
+  BACKLOG
+  EM_ANDAMENTO
+  AGUARDANDO_RESULTADOS
+  RELATORIO_PRONTO
+  RESULTADOS_APRESENTADOS
+  PAUSADO
+  ARQUIVADO
+}
+
+enum IceAction {
+  EXECUTAR_AGORA
+  EM_SEGUIDA
+  BACKLOG
+  ARQUIVAR
+}
+
+enum AusenciaType {
+  FERIAS
+  LICENCA_MEDICA
+  LICENCA_MATERNIDADE
+  DAY_OFF
+  OUTROS
+}
+
+enum MemberRole {
+  VISITANTE
+  COLABORADOR
+  LIDERANCA
+}
+
+enum OKRUnit {
+  UNIDADE
+  REAL
+  PORCENTAGEM
+}
+
+enum OKRMeasurementType {
+  ACUMULADO
+  MEDIA_MENSAL
+}
+
+enum Priority {
+  URGENTE
+  ALTA
+  MEDIA
+  BAIXA
+}
+
+enum ResultadoFinal {
+  SUCESSO
+  PARCIAL
+  FALHA
+}
+
+/// Aviso para uma pessoa: foi adicionada/removida como responsável, foi
+/// mencionada ou houve comentário num item dela. Gerada pelas actions DEPOIS da
+/// gravação (lib/notificacoes-db.ts) — é aviso, não portão: falhar não desfaz a
+/// edição. Guarda o texto do item (nome, trecho) como estava no momento, para
+/// continuar legível se o item for renomeado ou excluído.
+model Notificacao {
+  id             String          @id @default(uuid())
+  destinatarioId String
+  /// Quem fez a ação. NULL se a pessoa foi removida do time.
+  autorId        String?
+  tipo           TipoNotificacao
+  /// Para onde o aviso leva: o item (iniciativa/experimento/KR) ou a Weekly.
+  alvo           AlvoNotificacao
+  alvoId         String
+  alvoNome       String
+  /// Nome do checkpoint, quando o aviso é sobre um checkpoint do item.
+  subitem        String?
+  /// Começo do comentário (menção e comentário) ou, num aviso agrupado de
+  /// itens, a lista de nomes ("A, B, C e mais 2").
+  trecho         String?
+  /// Quantos itens o aviso reúne. >1 vem da edição em massa (uma pessoa,
+  /// um aviso) e da duplicação de vários checkpoints.
+  quantidade     Int             @default(1)
+  lidaEm         DateTime?
+  createdAt      DateTime        @default(now())
+  destinatario   TeamMember      @relation("NotificacaoDestinatario", fields: [destinatarioId], references: [id], onDelete: Cascade)
+  autor          TeamMember?     @relation("NotificacaoAutor", fields: [autorId], references: [id], onDelete: SetNull)
+
+  // A leitura é sempre "as minhas, da mais recente"; o contador do sino filtra
+  // por não lidas.
+  @@index([destinatarioId, createdAt])
+  @@index([destinatarioId, lidaEm])
+  @@index([autorId])
+}
+
+enum TipoNotificacao {
+  RESPONSAVEL_ADICIONADO
+  RESPONSAVEL_REMOVIDO
+  MENCAO
+  COMENTARIO
+  ITEM_CONVERTIDO
+  ITEM_DUPLICADO
+}
+
+enum AlvoNotificacao {
+  INICIATIVA
+  EXPERIMENTO
+  OKR
+  ACAO_SEMANA
+}

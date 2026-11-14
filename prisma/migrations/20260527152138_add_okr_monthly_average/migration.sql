@@ -1,0 +1,8 @@
+-- CreateEnum
+CREATE TYPE "OKRMeasurementType" AS ENUM ('ACUMULADO', 'MEDIA_MENSAL');
+
+-- AlterTable
+ALTER TABLE "OKR" ADD COLUMN     "measurementType" "OKRMeasurementType" NOT NULL DEFAULT 'ACUMULADO',
+ADD COLUMN     "monthValue1" DOUBLE PRECISION,
+ADD COLUMN     "monthValue2" DOUBLE PRECISION,
+ADD COLUMN     "monthValue3" DOUBLE PRECISION;

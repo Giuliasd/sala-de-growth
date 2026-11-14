@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ExperimentoStatus" ADD VALUE 'AGUARDANDO_RESULTADOS';

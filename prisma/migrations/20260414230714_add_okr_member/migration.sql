@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "OKR" ADD COLUMN     "memberId" TEXT;
+
+-- AddForeignKey
+ALTER TABLE "OKR" ADD CONSTRAINT "OKR_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "TeamMember"("id") ON DELETE SET NULL ON UPDATE CASCADE;

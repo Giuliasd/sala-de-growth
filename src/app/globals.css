@@ -1,0 +1,601 @@
+@import "tailwindcss";
+
+/* ─── Design System — Sala de Growth ─────────────────────────────── */
+
+@theme {
+  --color-cream:        #FAF7F2;
+  --color-paper:        #FFFFFF;
+  --color-ink:          #1A1F1C;
+  --color-ink-soft:     #5A6660;
+  --color-line:         #EAE5DC;
+  --color-forest:       #1F4F3F;
+  --color-forest-soft:  #E8F0EA;
+  --color-forest-hover: #163A2E;
+  --color-peach:        #FF8B5E;
+  --color-peach-soft:   #FFE8DC;
+  --color-butter:       #F5D97A;
+  --color-butter-soft:  #FDF4D4;
+  --color-sky:          #A8C8E8;
+  --color-sky-soft:     #E6F0F9;
+  --color-sage:         #B8D4B8;
+  --color-sage-soft:    #E8F2E8;
+  --color-blush:        #F7B5C2;
+  --color-blush-soft:   #FCE8EC;
+  --color-lilac:        #C9B6E6;
+  --color-lilac-soft:   #F1ECFA;
+  /* Faixa alta (>66%) das barras de progresso de OKR: verde sálvia médio, na
+     mesma luminosidade do peach e do butter — o forest destoava, pesado demais
+     ao lado dos dois. É só preenchimento; texto segue em forest. */
+  --color-progress-good: #6DBE8E;
+}
+
+:root {
+  /* ── Base ─────────────────────────────────────────── */
+  --bg-app:     #FAF7F2;   /* cream */
+  --bg-surface: #FFFFFF;   /* paper */
+  --bg-sidebar: #FFFFFF;
+  --bg-input:   #FFFFFF;   /* paper — fundo de inputs */
+  --bg-canvas:  #FAF7F2;   /* cream — fundo de áreas/modais */
+
+  /* ── Brand ───────────────────────────────────────── */
+  --brand-primary:       #1F4F3F;   /* forest */
+  --brand-primary-hover: #163A2E;   /* forest-hover */
+  --on-brand:            #FFFFFF;   /* texto/ícone sobre superfície da marca */
+
+  /* ── Accent (sidebar ativo) ──────────────────────── */
+  --accent:        #1F4F3F;   /* forest */
+  --accent-hover:  #163A2E;
+  --accent-subtle: #E8F0EA;   /* forest-soft */
+
+  /* ── Paleta completa ─────────────────────────────── */
+  --peach:       #FF8B5E;
+  --peach-soft:  #FFE8DC;
+  --butter:      #F5D97A;
+  --butter-soft: #FDF4D4;
+  --sky:         #A8C8E8;
+  --sky-soft:    #E6F0F9;
+  --sage:        #B8D4B8;
+  --sage-soft:   #E8F2E8;
+  --blush:       #F7B5C2;
+  --blush-soft:  #FCE8EC;
+  --lilac:       #C9B6E6;   /* categoria "Marco" dos checkpoints */
+  --lilac-soft:  #F1ECFA;
+  --forest-soft: #E8F0EA;
+
+  /* ── Texto "forte" sobre as variantes -soft (badges) ─
+     Cores escuras que leem sobre os pastéis claros. Como os -soft continuam
+     claros no dark, servem aos dois temas. */
+  --sky-strong:    #1B4D6E;
+  --peach-strong:  #8B3A1A;
+  --butter-strong: #7A5D0B;
+  --blush-strong:  #9B3A5A;
+  --lilac-strong:  #5B3F94;
+  --sage-strong:   #1E5C40;   /* verde escuro p/ texto de "concluída" sobre sage-soft;
+                                 estável nos dois temas (o --color-forest clareia no dark
+                                 e caía p/ ~3.6:1 sobre o verde-claro). */
+
+  /* ── Texto ───────────────────────────────────────── */
+  --text-primary:   #1A1F1C;
+  --text-secondary: #5A6660;
+  --text-muted:     #697474;   /* ≥4.5:1 sobre branco e sobre o creme (WCAG AA) — era #9AA5A5, ~2,4:1 */
+
+  /* ── Bordas ──────────────────────────────────────── */
+  --border-subtle:  #EAE5DC;
+  --border-default: #D1C9BC;
+
+  /* ── Tooltip — superfície SEMPRE escura com texto branco.
+     Não usar --text-primary como fundo: no dark ele vira quase-branco e o
+     texto branco fixo dos tooltips some (branco sobre branco). */
+  --bg-tooltip:     #1A1F1C;   /* ink */
+  --border-tooltip: transparent;
+
+  /* ── Status (pastéis — usados em badges legados) ─── */
+  --status-todo-bg:           #E6F0F9;   /* sky-soft — backlog */
+  --status-todo-text:         #1A1F1C;   /* ink */
+  --status-progress-bg:       #FFE8DC;   /* peach-soft — em andamento */
+  --status-progress-text:     #1A1F1C;   /* ink */
+  --status-review-bg:         #FAF7F2;   /* cream — pausada */
+  --status-review-text:       #5A6660;   /* ink-soft */
+  --status-done-bg:           #E8F2E8;   /* sage-soft — concluída */
+  --status-done-text:         #1A1F1C;   /* ink */
+  --status-cancelled-bg:      #FAF7F2;   /* cream — cancelada */
+  --status-cancelled-text:    #5A6660;   /* ink-soft */
+  --status-error-bg:          #FCE8EC;   /* blush-soft — erro */
+  --status-error-text:        #A52A2A;   /* dark red */
+  /* Atraso e risco (prazo vencido, marco em risco, KR parado, análise
+     vencida): a cor de TEXTO solto no card. É o --peach-strong no claro; no
+     escuro vira o peach claro, porque o strong some sobre a superfície escura.
+     Dentro de pill/barra com fundo peach-soft use --peach-strong direto. */
+  --status-late-text:         #8B3A1A;   /* = peach-strong */
+
+  /* ── Progresso ───────────────────────────────────── */
+  --progress-high: #1F4F3F;   /* forest */
+  --progress-mid:  #C4960A;   /* butter escuro */
+  --progress-low:  #C05A2A;   /* peach escuro */
+  /* Percentual da faixa média escrito ao lado da barra: o butter puro some
+     sobre o branco (~1.4:1). */
+  --progress-mid-text: #8A6A0C;
+
+  /* ── Hover de estado de erro (Button danger) ─────── */
+  --status-error-hover: #F4C0C8;
+
+  /* ── Sombras ─────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(31, 79, 63, 0.06);
+  --shadow-md: 0 2px 8px rgba(31, 79, 63, 0.08);
+  --shadow-lg: 0 8px 24px rgba(31, 79, 63, 0.10);
+
+  /* ── Border radius ───────────────────────────────── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  /* ── Fontes ──────────────────────────────────────── */
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* ── Movimento ───────────────────────────────────── */
+  --duration-fast: 120ms;   /* hover, foco */
+  --duration-base: 200ms;   /* maioria das transições */
+  --duration-slow: 320ms;   /* modais, painéis */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* padrão geral */
+  --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);   /* entrada suave */
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1); /* leve overshoot */
+
+  /* ── Foco por teclado ────────────────────────────── */
+  --focus-ring: var(--brand-primary);
+}
+
+/* ─── Dark mode ───────────────────────────────────────────────────────
+   Habilitado por `html[data-theme="dark"]` (ver ThemeToggle no perfil).
+   Estratégia: remapeamos só os tokens neutros/estruturais (fundo, superfície,
+   texto, bordas). A paleta de marca/acentos (forest, peach, sky, sage…) e as
+   variantes "-soft" continuam claras de propósito — assim todo par cor/fundo e
+   os badges já existentes seguem legíveis sem precisar tocar em componente.
+   ──────────────────────────────────────────────────────────────────── */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Tokens de paleta (@theme) — apenas neutros ──── */
+  --color-cream:    #2C332E;   /* chip/superfície neutra elevada */
+  --color-paper:    #1F2521;   /* superfície de cards */
+  --color-ink:      #E8ECE9;   /* texto forte */
+  --color-ink-soft: #AAB3AD;   /* texto suave */
+  --color-line:     #333B35;   /* linha/borda */
+  --color-forest:   #2E8B67;   /* alinhado ao verde legível (bg-forest/text-forest) */
+
+  /* ── Base — escala de elevação (mais escuro → mais claro) ── */
+  --bg-app:     #0E100F;   /* fundo da página (base) */
+  --bg-surface: #1F2521;   /* cards */
+  --bg-sidebar: #141613;
+  --bg-input:   #2A312C;   /* inputs / raised */
+  --bg-canvas:  #0E100F;
+
+  /* ── Marca — verde mais claro que o forest para ler como ícone/texto
+     sobre fundo escuro, mantendo texto branco legível quando é fundo ── */
+  --brand-primary:       #2E8B67;
+  --brand-primary-hover: #37A074;
+  --on-brand:            #FFFFFF;
+  --accent:              #2E8B67;
+  --accent-hover:        #37A074;
+  --progress-high:       #2E8B67;
+  --progress-mid-text:   #F5D97A;   /* no dark o butter puro já lê bem */
+
+  /* ── Superfícies verdes "-soft" — escurecidas no dark ─────────────────
+     No light elas são verde-claro e o texto por cima é escuro (lê bem). No dark
+     o texto vira claro (--text-primary/secondary), então o fundo precisa
+     escurecer junto — senão o texto some (era o caso do card de quarter ativo,
+     do modal de scores, dos hovers de botão-ghost, etc.). Não afeta os badges
+     de status, que usam sky/sage/peach-soft + seus próprios tokens -text. O
+     verde de marca (--brand-primary) segue legível por cima (~3:1, uso gráfico). */
+  --accent-subtle:       #1B3627;
+  --color-forest-soft:   #1B3627;
+  --forest-soft:         #1B3627;
+
+  /* ── Texto ───────────────────────────────────────── */
+  --text-primary:   #E8ECE9;
+  --text-secondary: #AAB3AD;
+  --text-muted:     #8A948D;   /* ≥4.5:1 sobre as superfícies (WCAG AA) */
+
+  /* ── Bordas ──────────────────────────────────────── */
+  --border-subtle:  #333B35;
+  --border-default: #444D46;
+
+  /* ── Tooltip — superfície elevada escura; borda dá o contorno
+     que a sombra sozinha não dá sobre fundo escuro ── */
+  --bg-tooltip:     #343C37;
+  --border-tooltip: #4A544D;
+
+  /* ── Status neutros (badges legados) ─────────────── */
+  --status-review-bg:      #2C332E;
+  --status-review-text:    #AAB3AD;
+  --status-cancelled-bg:   #2C332E;
+  --status-cancelled-text: #AAB3AD;
+  /* Atraso/risco em texto solto: o peach-strong não lê sobre o fundo escuro. */
+  --status-late-text:      #FF8B5E;   /* = peach */
+
+  /* ── Sombras (mais densas no escuro) ─────────────── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.40);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01' on, 'cv11' on;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Utilidades ──────────────────────────────────────────────────── */
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ─── Estados de interação (CSS nativo) ──────────────────────────────
+   Classes componíveis para padronizar transição, hover e clique sem
+   handlers JS. As cores vêm dos tokens, então funcionam em light/dark. */
+
+/* Transição padrão para as propriedades que mais mudam em estados */
+.u-transition {
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+/* Elemento clicável: cursor + leve "afundar" ao pressionar */
+.u-pressable {
+  cursor: pointer;
+}
+.u-pressable:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(0.97);
+}
+
+/* Superfície que "levanta" no hover (cards) */
+.u-hover-raise:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ─── Botão (Button.tsx) ──────────────────────────────────────────────
+   A variante define as cores via CSS vars (--btn-*); o hover/clique/foco
+   ficam aqui, em CSS nativo. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--btn-bg, transparent);
+  color: var(--btn-fg, var(--text-primary));
+  border: var(--btn-border, none);
+  font-weight: var(--btn-weight, 500);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+.btn:hover:not(:disabled) {
+  background: var(--btn-bg-hover, var(--btn-bg));
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ─── Campo de formulário (Field.tsx) ─────────────────────────────── */
+.field {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 9px 12px;
+  outline: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.field:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 18%, transparent);
+}
+.field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.field::placeholder {
+  color: var(--text-muted);
+}
+
+/* ─── Modal (Modal.tsx) ───────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  animation: modal-overlay-in var(--duration-base) var(--ease-out);
+}
+.modal-panel {
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 32px;
+  animation: modal-panel-in var(--duration-slow) var(--ease-spring);
+}
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── Toast (Toast.tsx) ───────────────────────────────────────────── */
+.toast-stack {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 340px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: toast-in var(--duration-base) var(--ease-out);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── Skeleton (Skeleton.tsx) ─────────────────────────────────────── */
+.skeleton {
+  background: var(--border-subtle);
+  border-radius: var(--radius-md);
+  animation: skeleton-pulse 1.4s var(--ease-standard) infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+/* Demo de durações na página /design-system */
+.motion-demo:hover {
+  transform: translateY(-6px);
+  background: var(--accent-subtle) !important;
+}
+
+/* ─── Transição de página (fade-in por navegação) ─────────────────── */
+.page-enter {
+  animation: page-enter var(--duration-base) var(--ease-out);
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── Barra de carregamento de navegação (TopProgressBar) ─────────── */
+.top-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 100;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+}
+.top-progress::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  background: var(--brand-primary);
+  animation: top-progress-slide 1s var(--ease-standard) infinite;
+}
+@keyframes top-progress-slide {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+
+/* ─── IconButton (botão-ícone quadrado, ghost) ────────────────────── */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--accent-subtle);
+  color: var(--brand-primary);
+}
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Variante destrutiva: hover em tons de erro (ex.: excluir). */
+.icon-btn--danger:hover:not(:disabled) {
+  background: var(--status-error-bg);
+  color: var(--status-error-text);
+}
+
+/* ─── Linha de lista (hover suave) ────────────────────────────────── */
+.list-row {
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.list-row:hover {
+  background: var(--bg-app);
+}
+
+/* ─── Segmented toggle (SegmentedToggle.tsx) ──────────────────────── */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.seg-item:hover:not([data-active="true"]) {
+  background: var(--accent-subtle);
+  color: var(--brand-primary);
+}
+.seg-item[data-active="true"] {
+  background: var(--brand-primary);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Badge / Pill (Badge.tsx) ────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-height: 32px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ─── Foco por teclado ───────────────────────────────────────────────
+   Anel de foco visível só na navegação por teclado (focus-visible),
+   nunca no clique de mouse — acessível sem poluir o visual. */
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Reduzir movimento ──────────────────────────────────────────────
+   Respeita a preferência do sistema operacional por menos animação. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Sidebar Pinning ────────────────────────────────────────────── */
+
+main {
+  margin-left: 72px;
+  transition: margin-left 0.3s ease-in-out;
+}
+
+/* Classe do tempo do pin; hoje marca a sidebar expandida pelo botão. */
+body.sidebar-pinned main {
+  margin-left: 240px !important;
+}
+
+/* ─── Modo foco ──────────────────────────────────────────────────────
+   Ligado pelo detalhe de iniciativa (data-focus-mode no body) para o
+   roadmap/checkpoints ocupar a tela inteira: esconde a sidebar e devolve
+   os 72px de recuo do conteúdo. Precisa ser CSS global porque a sidebar
+   mora no layout, fora da árvore da página. O componente remove o
+   atributo ao desmontar — sem isso, sair da página deixaria o menu
+   escondido. */
+body[data-focus-mode="true"] > div > aside {
+  display: none;
+}
+
+body[data-focus-mode="true"] main,
+body[data-focus-mode="true"].sidebar-pinned main {
+  margin-left: 0 !important;
+}
+
+/* ─── Transição de tema ──────────────────────────────────────────────
+   Só animamos a troca deliberada (classe adicionada pelo ThemeToggle),
+   nunca a primeira pintura — assim o SSR não "pisca". Respeita quem pede
+   menos movimento. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    fill 0.25s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition: none !important;
+  }
+}
