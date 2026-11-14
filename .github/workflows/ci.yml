@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   push:
-    branches: [master]
+    branches: [main]
 
 # Token só de leitura: o CI roda código de PR e não precisa escrever nada.
 permissions:
