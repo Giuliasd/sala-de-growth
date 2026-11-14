@@ -162,9 +162,11 @@ Em outra plataforma, o essencial é:
 
 ## Contribuindo
 
-O [`AGENTS.md`](AGENTS.md) explica as convenções do projeto (commits, migrations,
-componentes compartilhados e regras que costumam pegar quem chega agora). Antes
-de abrir um PR, rode `npx tsc --noEmit`, `npx eslint` e `npm test`.
+Contribuições são bem-vindas! O passo a passo — como relatar bugs, sugerir
+melhorias e enviar Pull Requests — está no [`CONTRIBUTING.md`](CONTRIBUTING.md).
+As convenções técnicas do código ficam no [`AGENTS.md`](AGENTS.md).
+
+Ao participar, siga o nosso [Código de Conduta](CODE_OF_CONDUCT.md).
 
 Encontrou uma falha de segurança? Veja o [`SECURITY.md`](SECURITY.md).
 

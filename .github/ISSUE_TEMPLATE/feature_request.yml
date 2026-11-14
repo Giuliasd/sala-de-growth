@@ -1,0 +1,31 @@
+name: Sugerir uma melhoria
+description: Uma ideia de funcionalidade nova ou de ajuste.
+title: "[Sugestão] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve?
+      description: Conte a situação do dia a dia em que a falta disso atrapalha.
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: O que você propõe?
+      description: Como imagina que deveria funcionar.
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas que você considerou
+  - type: dropdown
+    id: contribuir
+    attributes:
+      label: Quer ajudar a implementar?
+      options:
+        - "Sim, posso abrir um PR"
+        - "Talvez, com alguma orientação"
+        - "Não, é só a sugestão"
